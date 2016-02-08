@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Queue Warning</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="string_latitude">Latitude: Unavailable</string>
+    <string name="string_longitude">Longitude: Unavailable</string>
+    <string name="string_speed">Speed: Unavailable</string>
+    <string name="string_accuracy">Accuracy: Unavailable</string>
+    <string name="string_count">Count: 0</string>
+    <string name="string_IBM">IBM Status: </string>
+    <string name="string_addr">Address: Unavailable</string>
+
+</resources>

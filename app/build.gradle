@@ -1,0 +1,60 @@
+apply plugin: 'com.android.application'
+//apply plugin: 'com.google.gms.google-services'
+
+android {
+    compileSdkVersion 'Google Inc.:Google APIs:23'
+    buildToolsVersion '23.0.0'
+    defaultConfig {
+        applicationId "com.example.eo"
+        minSdkVersion 19
+        targetSdkVersion 22
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+    packagingOptions {
+        exclude 'META-INF/ECLIPSE_.RSA'
+        exclude 'META-INF/ECLIPSE_.SF'
+    }
+    productFlavors {
+    }
+    lintOptions {
+        abortOnError false
+    }
+}
+
+
+repositories {
+    maven {
+        url "https://repo.eclipse.org/content/repositories/paho-releases/"
+    }
+}
+
+
+dependencies {
+    compile files('src/main/jniLibs/sqlcipher.jar')
+    compile('org.eclipse.paho:org.eclipse.paho.android.service:1.0.2') {
+        exclude module: 'support-v4'
+    }
+    compile 'com.android.support:appcompat-v7:23.1.1'
+    compile 'com.google.android.gms:play-services:8.3.0'
+
+    compile group: 'com.ibm.mobilefirstplatform.clientsdk.android',
+            name:'core',
+            version: '1.+',
+            ext:'aar',
+            transitive: true
+
+    compile group: 'com.ibm.mobilefirstplatform.clientsdk.android',
+            name: 'push',
+            version: '1.+',
+            ext: 'aar',
+            transitive: true
+
+    compile 'com.android.support:support-v4:22.2.1'
+
+    compile 'com.google.code.gson:gson:2.2.4'
+}
