@@ -11,6 +11,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
@@ -36,12 +37,11 @@ public class MainActivity extends Activity {
 
     // IBM mobile service variables
     private TextView label_IBM = null;
-    private MFPPush push = null;
-    private MFPPushNotificationListener notificationListener = null;
+    private MFPPush push;
+    private MFPPushNotificationListener notificationListener;
 
     //mqtt
-    private MqttHandler myHandler;
-    private boolean connectedMqtt = false;
+    private MqttHandler myMqttHandler;
 
     // may or may not be implemented
     private List<String> allTags;
@@ -96,18 +96,19 @@ public class MainActivity extends Activity {
         String prov = locationManager.getBestProvider(criteria, true);
 
         // set up MQTT for sending location data
-        myHandler = MqttHandler.getInstance(getApplicationContext());
-        myHandler.connect();
-        connectedMqtt = true;
+        myMqttHandler = MqttHandler.getInstance(getApplicationContext());
+        myMqttHandler.connect();
 
         // Define a listener that responds to location updates
         LocationListener locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
                 // Called when a new location is found by the network location provider.
                 makeUseOfNewLocation(location);
-                if (connectedMqtt) {
-                    myHandler.publish(latitude, longitude, speed);
-                }
+
+                if (myMqttHandler.getConnectionStatus()) {
+                    myMqttHandler.publish(latitude, longitude, speed);
+                    Log.d("Main activity", "Just published");
+                } 
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -134,13 +135,13 @@ public class MainActivity extends Activity {
             throw new RuntimeException(e);
         }
 
+        // Initialize Push client
+        MFPPush.getInstance().initialize(getApplicationContext());
+
         //Initialize client Push SDK for Java
         push = MFPPush.getInstance();
-        push.initialize(getApplicationContext());
 
-
-        //Register Android devices
-
+        //Register Android device
         push.register(new MFPPushResponseListener<String>() {
             @Override
             public void onSuccess(String deviceId) {
@@ -155,23 +156,20 @@ public class MainActivity extends Activity {
             }
         });
 
+        final Activity activity = this;
+
         //Handles the notification when it arrives
 
         notificationListener = new MFPPushNotificationListener() {
             @Override
             public void onReceive (final MFPSimplePushNotification message){
                 // Handle Push Notification
+                showNotification(activity, message);
             }
         };
 
-
-        final Activity activity = this;
-
-
         // Register the listener with the Location Manager to receive location updates
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-        // myHandler.publish(0, 0, 0);
-        //updateTextView("Supposedly published");
 
     }
 
@@ -195,7 +193,6 @@ public class MainActivity extends Activity {
         MqttHandler.getInstance(this).disconnect(new IMqttActionListener() {
             @Override
             public void onSuccess(IMqttToken iMqttToken) {
-                connectedMqtt = false;
             }
 
             @Override
@@ -235,9 +232,9 @@ public class MainActivity extends Activity {
         });
     }
 
-    /*
+
     void unregisterDevice() {
-        push.unregisterDevice(new MFPPushResponseListener<String>() {
+        push.unregister(new MFPPushResponseListener<String>() {
             @Override
             public void onSuccess(String s) {
                 updateTextView("Device is successfully unregistered. Success response is: " + s);
@@ -248,7 +245,7 @@ public class MainActivity extends Activity {
                 updateTextView("Device unregistration failure. Failure response is: " + e);
             }
         });
-    } */
+    }
 
     void unsubscribeFromTags(final String tag) {
         push.unsubscribe(tag, new MFPPushResponseListener<String>() {
@@ -351,6 +348,8 @@ public class MainActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
+
+    // This method changes the private variable values for latitude, longitude, speed, and acc
     public void makeUseOfNewLocation(Location location) {
 
         try {
@@ -364,12 +363,13 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         }
 
-
-        System.out.println(location.hasSpeed());
-        double latitude = location.getLatitude();
-        double longitude = location.getLongitude();
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
         //double speed = location.getSpeed();
-        float acc = location.getAccuracy();
+        if (prev != null) {
+            speed = getSpeed(location, prev);
+        }
+        acc = location.getAccuracy();
         count++;
 
         this.label_latitude.setText("Latitude: " + latitude);

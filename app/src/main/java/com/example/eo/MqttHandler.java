@@ -23,11 +23,13 @@ public class MqttHandler implements MqttCallback {
     private MqttAndroidClient mqttClient;
     Context context;
 
+    /*
     private static String ORG = "<INSERT ORG HERE>";
     private static String DEVICE_TYPE = "<INSERT DEVICE TYPE HERE>";
     private static String DEVICE_ID = "<INSERT DEVICE_ID HERE>";
     private static String TOKEN = "<INSERT TOKEN HERE>";
-    private static String TOPIC = "<INSERT TOPOIC HERE>";
+    private static String TOPIC = "<INSERT TOPIC HERE>";
+    */
 
     private MqttHandler(Context context) {
         this.context = context;
@@ -91,7 +93,7 @@ public class MqttHandler implements MqttCallback {
 
             Long tsLong = System.currentTimeMillis()/1000;
             String ts = tsLong.toString();
-            String msg = "{'_id':" + DEVICE_ID + "'timestamp:'" + ts + "'latitude':"+latitude+",'longitude':"+longitude+ ", 'speed':"+speed+"}";
+            String msg = "{\"timestamp\":" + ts + ",\"latitude\":"+latitude+",\"longitude\":"+longitude+ ", \"speed\":"+speed+"}";
             Log.d(TAG, ".publish() - Publishing " + msg);
             MqttMessage mqttMsg = new MqttMessage(msg.getBytes());
             mqttMsg.setRetained(false);
