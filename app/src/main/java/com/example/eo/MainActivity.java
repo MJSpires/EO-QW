@@ -1,6 +1,5 @@
 package com.example.eo;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -11,20 +10,26 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.app.FragmentTransaction;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
-//IBM Bluemix
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.ibm.mobilefirstplatform.clientsdk.android.core.api.BMSClient;
 import com.ibm.mobilefirstplatform.clientsdk.android.push.api.MFPPush;
 import com.ibm.mobilefirstplatform.clientsdk.android.push.api.MFPPushException;
-import com.ibm.mobilefirstplatform.clientsdk.android.push.api.MFPPushResponseListener;
 import com.ibm.mobilefirstplatform.clientsdk.android.push.api.MFPPushNotificationListener;
+import com.ibm.mobilefirstplatform.clientsdk.android.push.api.MFPPushResponseListener;
 import com.ibm.mobilefirstplatform.clientsdk.android.push.api.MFPSimplePushNotification;
 
-//mqtt
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 
@@ -33,7 +38,11 @@ import java.net.MalformedURLException;
 import java.util.List;
 
 
-public class MainActivity extends Activity {
+//IBM Bluemix
+//mqtt
+
+
+public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
 
     // IBM mobile service variables
     private TextView label_IBM = null;
@@ -64,10 +73,21 @@ public class MainActivity extends Activity {
     double speed;
     float acc;
 
+    private GoogleMap mMap;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+//        MapFragment mMapFragment = MapFragment.newInstance();
+//        FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
+//        fragmentTransaction.add(R.id.frag_container, mMapFragment);
+//        fragmentTransaction.commit();
+        MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
         // label_IBM = (TextView) findViewById(R.id.label_IBM);
         this.label_latitude = (TextView) super.findViewById(R.id.label_latitude);
         this.label_longitude = (TextView) super.findViewById(R.id.label_longitude);
@@ -123,7 +143,7 @@ public class MainActivity extends Activity {
         };
 
         // Register the listener with the Location Manager to receive location updates
-        locationManager.requestLocationUpdates(prov, 2000, 0, locationListener);
+        locationManager.requestLocationUpdates(prov, 500, 0, locationListener);
         gc = new Geocoder(this);
 
         // initialize mobile client
@@ -155,9 +175,7 @@ public class MainActivity extends Activity {
                         + "Push notifications will not be received.");
             }
         });
-
-        final Activity activity = this;
-
+        final FragmentActivity activity = this;
         //Handles the notification when it arrives
 
         notificationListener = new MFPPushNotificationListener() {
@@ -169,7 +187,7 @@ public class MainActivity extends Activity {
         };
 
         // Register the listener with the Location Manager to receive location updates
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        //locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
 
     }
 
@@ -201,7 +219,7 @@ public class MainActivity extends Activity {
         });
     }
 
-    void showNotification(Activity activity, MFPSimplePushNotification message) {
+    void showNotification(FragmentActivity activity, MFPSimplePushNotification message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setMessage("Notification Received : " + message.toString());
         builder.setCancelable(true);
@@ -352,6 +370,12 @@ public class MainActivity extends Activity {
     // This method changes the private variable values for latitude, longitude, speed, and acc
     public void makeUseOfNewLocation(Location location) {
 
+        LatLng sydney = new LatLng(location.getLatitude(), location.getLongitude());
+        mMap.clear();
+        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        mMap.moveCamera(CameraUpdateFactory.zoomTo(15));
+
         try {
             List<Address> list = gc.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
             this.addr.setText("Address:\n");
@@ -374,8 +398,8 @@ public class MainActivity extends Activity {
 
         this.label_latitude.setText("Latitude: " + latitude);
         this.label_longitude.setText("Longitude: " + longitude);
-        if (prev != null)
-            this.label_speed.setText("Speed: " + /*location.getSpeed());// + " " +*/ getSpeed(location, prev));
+        //if (prev != null)
+            this.label_speed.setText("Speed: " + /*location.getSpeed());// + " " +*/ location.getSpeed());//getSpeed(location, prev));
         this.label_accuracy.setText("Accuracy: " + acc);
         this.label_count.setText("Count: " + count);
 
@@ -387,5 +411,26 @@ public class MainActivity extends Activity {
         long time = loc_cur.getElapsedRealtimeNanos() - loc_prev.getElapsedRealtimeNanos();
         return loc_cur.distanceTo(loc_prev) / time * 1000000000;
 
+    }
+
+
+
+    /**
+     * Manipulates the map once available.
+     * This callback is triggered when the map is ready to be used.
+     * This is where we can add markers or lines, add listeners or move the camera. In this case,
+     * we just add a marker near Sydney, Australia.
+     * If Google Play services is not installed on the device, the user will be prompted to install
+     * it inside the SupportMapFragment. This method will only be triggered once the user has
+     * installed Google Play services and returned to the app.
+     */
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+
+        // Add a marker in Sydney and move the camera
+        LatLng sydney = new LatLng(-34, 151);
+        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
 }

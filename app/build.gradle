@@ -3,10 +3,10 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 'Google Inc.:Google APIs:23'
-    buildToolsVersion '23.0.0'
+    buildToolsVersion '23.0.2'
     defaultConfig {
         applicationId "com.example.eo"
-        minSdkVersion 19
+        minSdkVersion 22
         targetSdkVersion 22
     }
     buildTypes {
