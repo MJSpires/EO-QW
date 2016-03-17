@@ -23,18 +23,21 @@ public class MqttHandler implements MqttCallback {
     private MqttAndroidClient mqttClient;
     Context context;
 
-    /*
-    private static String ORG = "<INSERT ORG HERE>";
-    private static String DEVICE_TYPE = "<INSERT DEVICE TYPE HERE>";
-    private static String DEVICE_ID = "<INSERT DEVICE_ID HERE>";
-    private static String TOKEN = "<INSERT TOKEN HERE>";
-    private static String TOPIC = "<INSERT TOPIC HERE>";
-    */
+
+    private static String ORG = "";
+    private static String DEVICE_TYPE = "";
+    private static String DEVICE_ID = "";
+    private static String TOKEN = "";
+    private static String TOPIC = "";
+
 
     private MqttHandler(Context context) {
         this.context = context;
     }
 
+    static void setToken(String tok){
+        TOKEN = tok;
+    }
 
     public static MqttHandler getInstance(Context context) {
         if (instance == null) {

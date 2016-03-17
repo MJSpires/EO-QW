@@ -3,12 +3,14 @@ package com.example.eo;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.app.FragmentTransaction;
@@ -74,17 +76,29 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     float acc;
 
     private GoogleMap mMap;
+    private static SharedPreferences pref;
 
+
+    public static void setToken(String tok){
+        SharedPreferences.Editor ed = pref.edit();
+        ed.putString("testtoken", tok);
+        ed.commit();
+        MqttHandler.setToken(tok);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        MapFragment mMapFragment = MapFragment.newInstance();
-//        FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
-//        fragmentTransaction.add(R.id.frag_container, mMapFragment);
-//        fragmentTransaction.commit();
+        pref = super.getPreferences(Context.MODE_PRIVATE);
+        if (!pref.contains("testtoken")){
+            RequestTokenTask task = new RequestTokenTask();
+            task.execute("");//<Insert registration address here>
+        } else{
+            MqttHandler.setToken(pref.getString("testtoken",""));
+        }
+
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
