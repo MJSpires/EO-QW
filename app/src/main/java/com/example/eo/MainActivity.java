@@ -10,10 +10,8 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.app.FragmentTransaction;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -46,6 +44,8 @@ import java.util.List;
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
 
+    public static final String DEBUG_TAG = "eo-qw";
+
     // IBM mobile service variables
     private TextView label_IBM = null;
     private MFPPush push;
@@ -73,6 +73,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     double latitude;
     double longitude;
     double speed;
+    String roadName;
     float acc;
 
     private GoogleMap mMap;
@@ -94,7 +95,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         pref = super.getPreferences(Context.MODE_PRIVATE);
         if (!pref.contains("testtoken")){
             RequestTokenTask task = new RequestTokenTask();
-            task.execute("");//<Insert registration address here>
+            task.execute("http://eo-qw-iot.mybluemix.net/tokenRegistration");//<Insert registration address here>
         } else{
             MqttHandler.setToken(pref.getString("testtoken",""));
         }
@@ -138,9 +139,10 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             public void onLocationChanged(Location location) {
                 // Called when a new location is found by the network location provider.
                 makeUseOfNewLocation(location);
+                Log.d(DEBUG_TAG, roadName);
 
                 if (myMqttHandler.getConnectionStatus()) {
-                    myMqttHandler.publish(latitude, longitude, speed);
+                    myMqttHandler.publish(latitude, longitude, speed, roadName);
                     Log.d("Main activity", "Just published");
                 } 
             }
@@ -392,10 +394,16 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         try {
             List<Address> list = gc.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-            this.addr.setText("Address:\n");
-            for (int i = 0; i < list.get(0).getMaxAddressLineIndex(); i++) {
-                this.addr.setText(this.addr.getText() + "\n" + list.get(0).getAddressLine(i));
+            this.addr.setText("Address:");
+            if (list == null || list.size() == 0){
+                roadName = "";
+            } else{
+                for (int i = 0; i < list.get(0).getMaxAddressLineIndex(); i++) {
+                    this.addr.setText(this.addr.getText() + "\n\t\t" + list.get(0).getAddressLine(i));
+                }
+                roadName = list.get(0).getAddressLine(0);
             }
+
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

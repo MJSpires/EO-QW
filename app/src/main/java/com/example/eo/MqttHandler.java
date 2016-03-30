@@ -2,6 +2,7 @@ package com.example.eo;
 //https://developer.ibm.com/recipes/tutorials/android-wear-iot-bluemix/
 
 import android.content.Context;
+import android.os.Build;
 import android.util.Log;
 
 import com.example.eo.utils.ActionListener;
@@ -16,6 +17,8 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.json.JSONException;
 
+import java.sql.BatchUpdateException;
+
 public class MqttHandler implements MqttCallback {
 
     private final static String TAG = MqttHandler.class.getName();
@@ -26,7 +29,7 @@ public class MqttHandler implements MqttCallback {
 
     private static String ORG = "";
     private static String DEVICE_TYPE = "";
-    private static String DEVICE_ID = "";
+    private static String DEVICE_ID = Build.SERIAL;
     private static String TOKEN = "";
     private static String TOPIC = "";
 
@@ -91,12 +94,13 @@ public class MqttHandler implements MqttCallback {
         }
     }
 
-    public void publish(double latitude, double longitude, double speed) {
+    public void publish(double latitude, double longitude, double speed, String roadName) {
         if (isConnected()) {
 
             Long tsLong = System.currentTimeMillis()/1000;
             String ts = tsLong.toString();
-            String msg = "{\"timestamp\":" + ts + ",\"latitude\":"+latitude+",\"longitude\":"+longitude+ ", \"speed\":"+speed+"}";
+            String msg = "{\"timestamp\":" + ts + ",\"latitude\":"+latitude+"," +
+                    "\"longitude\":"+longitude+ ", \"speed\":"+speed+", \"roadName\":"+roadName+"}";
             Log.d(TAG, ".publish() - Publishing " + msg);
             MqttMessage mqttMsg = new MqttMessage(msg.getBytes());
             mqttMsg.setRetained(false);
