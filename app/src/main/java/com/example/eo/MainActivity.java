@@ -4,6 +4,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
@@ -42,7 +46,7 @@ import java.util.List;
 //mqtt
 
 
-public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MainActivity extends FragmentActivity implements OnMapReadyCallback, SensorEventListener {
 
     public static final String DEBUG_TAG = "eo-qw";
 
@@ -75,16 +79,21 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     double speed;
     String roadName;
     float acc;
+    float bearing;
+    float[] accel = new float[3];
 
     private GoogleMap mMap;
     private static SharedPreferences pref;
 
+    private SensorManager sensorManager;
+    private Sensor sensor;
 
     public static void setToken(String tok){
         SharedPreferences.Editor ed = pref.edit();
         ed.putString("testtoken", tok);
         ed.commit();
         MqttHandler.setToken(tok);
+
     }
 
     @Override
@@ -142,7 +151,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 Log.d(DEBUG_TAG, roadName);
 
                 if (myMqttHandler.getConnectionStatus()) {
-                    myMqttHandler.publish(latitude, longitude, speed, roadName);
+                    myMqttHandler.publish(latitude, longitude, speed, roadName, bearing, accel);
                     Log.d("Main activity", "Just published");
                 } 
             }
@@ -161,6 +170,11 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         // Register the listener with the Location Manager to receive location updates
         locationManager.requestLocationUpdates(prov, 500, 0, locationListener);
         gc = new Geocoder(this);
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+
+
 
         // initialize mobile client
         BMSClient client = BMSClient.getInstance();
@@ -219,6 +233,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         if (push != null) {
             push.listen(notificationListener);
         }
+        sensorManager.registerListener(this, sensor, 1*1000*1000, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     @Override
@@ -411,10 +426,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         latitude = location.getLatitude();
         longitude = location.getLongitude();
-        //double speed = location.getSpeed();
-        if (prev != null) {
-            speed = getSpeed(location, prev);
-        }
+        speed = location.getSpeed();
+        bearing = location.getBearing();
         acc = location.getAccuracy();
         count++;
 
@@ -428,11 +441,15 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         prev = location;
     }
 
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy){
 
-    public double getSpeed(Location loc_cur, Location loc_prev) {
-        long time = loc_cur.getElapsedRealtimeNanos() - loc_prev.getElapsedRealtimeNanos();
-        return loc_cur.distanceTo(loc_prev) / time * 1000000000;
+    }
 
+    @Override
+    public void onSensorChanged(SensorEvent event){
+        for (int i=0; i<event.values.length; i++)
+            accel[i] = event.values[i];
     }
 
 
@@ -455,4 +472,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
+
+
 }
