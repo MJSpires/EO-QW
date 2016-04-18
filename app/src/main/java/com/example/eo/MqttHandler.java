@@ -22,17 +22,19 @@ import java.util.Arrays;
 
 public class MqttHandler implements MqttCallback {
 
-    private final static String TAG = MqttHandler.class.getName();
+    private final static String TAG = "eo-qw";
     private static MqttHandler instance;
     private MqttAndroidClient mqttClient;
     Context context;
 
 
-    private static String ORG = "";
-    private static String DEVICE_TYPE = "";
-    private static String DEVICE_ID = Build.SERIAL;
+
+
+    private static String ORG = "kpa7jy";
+    private static String DEVICE_TYPE = "androidApp";
+    private static String DEVICE_ID = "";
     private static String TOKEN = "";
-    private static String TOPIC = "";
+    private static String TOPIC = "iot-2/evt/locationUpdate/fmt/json";
 
 
     private MqttHandler(Context context) {
@@ -43,11 +45,19 @@ public class MqttHandler implements MqttCallback {
         TOKEN = tok;
     }
 
+    static void setDeviceId(String id) {
+        DEVICE_ID = id;
+    }
+
     public static MqttHandler getInstance(Context context) {
         if (instance == null) {
             instance = new MqttHandler(context);
         }
         return instance;
+    }
+
+    public static String getDeviceId() {
+        return DEVICE_ID;
     }
 
     public void connect() {

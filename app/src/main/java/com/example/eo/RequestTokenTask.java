@@ -17,6 +17,13 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class RequestTokenTask extends AsyncTask<String, Void, String> {
+
+    private String deviceId;
+
+    public RequestTokenTask(String id) {
+        super();
+        deviceId = id;
+    }
     public static final String DEBUG_TAG = "eo-qw";
     @Override
     protected String doInBackground(String... urls) {
@@ -54,7 +61,7 @@ public class RequestTokenTask extends AsyncTask<String, Void, String> {
             os = conn.getOutputStream();
             JSONObject toSend = new JSONObject();
             try{
-                toSend.put("deviceId", Build.SERIAL);
+                toSend.put("deviceId",deviceId);
                 Log.d(DEBUG_TAG,toSend.toString());
             } catch (JSONException e) {
                 Log.e(DEBUG_TAG, e.getMessage());

@@ -14,6 +14,7 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
@@ -36,15 +37,11 @@ import com.ibm.mobilefirstplatform.clientsdk.android.push.api.MFPSimplePushNotif
 
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.List;
-
-
-//IBM Bluemix
-//mqtt
-
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback, SensorEventListener {
 
@@ -102,12 +99,63 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_main);
 
         pref = super.getPreferences(Context.MODE_PRIVATE);
-        if (!pref.contains("testtoken")){
-            RequestTokenTask task = new RequestTokenTask();
-            task.execute("http://eo-qw-iot.mybluemix.net/tokenRegistration");//<Insert registration address here>
-        } else{
-            MqttHandler.setToken(pref.getString("testtoken",""));
+
+        // initialize mobile client
+        BMSClient client = BMSClient.getInstance();
+        try {
+            client.initialize(getApplicationContext(), "http://eo-qw-iot.mybluemix.net"
+                    , "c8cb12e4-b959-4234-ad67-4be6ca372e4f");
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
         }
+
+        // Initialize Push client
+        MFPPush.getInstance().initialize(getApplicationContext());
+
+        //Initialize client Push SDK for Java
+        push = MFPPush.getInstance();
+
+        //Register Android device
+        push.register(new MFPPushResponseListener<String>() {
+            @Override
+            public void onSuccess(String deviceId) {
+                //at time of programming this, the deviceID returned is actually the successful json response
+                Log.d(DEBUG_TAG, "DeviceID returned is: " + deviceId.substring(deviceId.lastIndexOf("deviceId\":")+11, deviceId.indexOf("\",\"userId")));
+                String id = deviceId.substring(deviceId.lastIndexOf("deviceId\":")+11, deviceId.indexOf("\",\"userId"));
+                MqttHandler.setDeviceId(id);
+
+
+                if (!pref.contains("testtoken")){
+                    RequestTokenTask task = new RequestTokenTask(id);
+                    task.execute("http://eo-qw-iot.mybluemix.net/tokenRegistration");//<Insert registration address here
+                    while(task.getStatus() != AsyncTask.Status.FINISHED);
+                    myMqttHandler = MqttHandler.getInstance(getApplicationContext());
+                    myMqttHandler.connect();
+                } else{
+                    MqttHandler.setToken(pref.getString("testtoken",""));
+                    myMqttHandler = MqttHandler.getInstance(getApplicationContext());
+                    myMqttHandler.connect();
+                }
+
+            }
+
+            @Override
+            public void onFailure(MFPPushException ex) {
+                updateTextView("Error registering with Push Service...\n"
+                        + "Push notifications will not be received.");
+            }
+        });
+        final FragmentActivity activity = this;
+        //Handles the notification when it arrives
+
+        notificationListener = new MFPPushNotificationListener() {
+            @Override
+            public void onReceive (final MFPSimplePushNotification message){
+                // Handle Push Notification
+                showNotification(activity, message);
+            }
+        };
+
 
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
@@ -139,21 +187,21 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         String prov = locationManager.getBestProvider(criteria, true);
 
-        // set up MQTT for sending location data
-        myMqttHandler = MqttHandler.getInstance(getApplicationContext());
-        myMqttHandler.connect();
-
         // Define a listener that responds to location updates
         LocationListener locationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
                 // Called when a new location is found by the network location provider.
                 makeUseOfNewLocation(location);
-                Log.d(DEBUG_TAG, roadName);
 
-                if (myMqttHandler.getConnectionStatus()) {
-                    myMqttHandler.publish(latitude, longitude, speed, roadName, bearing, accel);
-                    Log.d("Main activity", "Just published");
-                } 
+                if (!roadName.isEmpty()) {
+                    Log.d(DEBUG_TAG, roadName);
+                }
+                if(myMqttHandler != null) {
+                    if (myMqttHandler.getConnectionStatus()) {
+                        myMqttHandler.publish(latitude, longitude, speed, roadName, bearing, accel);
+                        Log.d("Main activity", "Just published");
+                    }
+                }
             }
 
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -174,48 +222,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
 
-
-
-        // initialize mobile client
-        BMSClient client = BMSClient.getInstance();
-        try {
-            client.initialize(getApplicationContext(), "http://eo-qw-iot.mybluemix.net"
-                    , "c8cb12e4-b959-4234-ad67-4be6ca372e4f");
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-
-        // Initialize Push client
-        MFPPush.getInstance().initialize(getApplicationContext());
-
-        //Initialize client Push SDK for Java
-        push = MFPPush.getInstance();
-
-        //Register Android device
-        push.register(new MFPPushResponseListener<String>() {
-            @Override
-            public void onSuccess(String deviceId) {
-                updateTextView("Device is registered with Push Service.");
-               // displayTags();
-            }
-
-            @Override
-            public void onFailure(MFPPushException ex) {
-                updateTextView("Error registering with Push Service...\n"
-                        + "Push notifications will not be received.");
-            }
-        });
-        final FragmentActivity activity = this;
-        //Handles the notification when it arrives
-
-        notificationListener = new MFPPushNotificationListener() {
-            @Override
-            public void onReceive (final MFPSimplePushNotification message){
-                // Handle Push Notification
-                showNotification(activity, message);
-            }
-        };
-
         // Register the listener with the Location Manager to receive location updates
         //locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
 
@@ -232,6 +238,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         super.onResume();
         if (push != null) {
             push.listen(notificationListener);
+        }
+        if(myMqttHandler != null) {
+            myMqttHandler.connect();
         }
         sensorManager.registerListener(this, sensor, 1*1000*1000, SensorManager.SENSOR_DELAY_NORMAL);
     }
