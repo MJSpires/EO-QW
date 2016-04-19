@@ -108,10 +108,10 @@ public class MqttHandler implements MqttCallback {
     public void publish(double latitude, double longitude, double speed, String roadName, float bearing, float[] accel) {
         if (isConnected()) {
 
-            Long tsLong = System.currentTimeMillis()/1000;
+            Long tsLong = System.currentTimeMillis();
             String ts = tsLong.toString();
             String msg = "{\"timestamp\":" + ts + ",\"latitude\":"+latitude+"," +
-                    "\"longitude\":"+longitude+ ", \"speed\":"+speed+", \"roadName\":"+roadName+"}" +
+                    "\"longitude\":"+longitude+ ", \"speed\":"+speed+", \"roadName\":\""+roadName+"\"," +
                     "\"bearing\":"+bearing+ ", \"accel\":" + Arrays.toString(accel)+"}";
             Log.d(TAG, ".publish() - Publishing " + msg);
             MqttMessage mqttMsg = new MqttMessage(msg.getBytes());
